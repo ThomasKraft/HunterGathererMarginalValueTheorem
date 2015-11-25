@@ -1,21 +1,16 @@
 #### R Code Associated with "Hunter-gatherer residential mobility and the marginal value of rainforest patches" by Vivek V. Venkataraman, Thomas S. Kraft, Nathaniel J. Dominy, and Kirk M. Endicott
 
-# load required R packages (if packages are not yet installed, run install.packages(c("ggplot2", "reshape2", "nls2", "rootSolve", "plyr", "dplyr"))
+# load required R packages (if packages are not yet installed, run install.packages(c("ggplot2", "reshape2", "nls2", "rootSolve", "plyr", "dplyr", "RCurl"))
 library(ggplot2)
 library(reshape2)
 library(nls2)
 library(rootSolve)
 library(plyr)
 library(dplyr)
+library(curl)
 
-# Load the data from the Github repo
-
-# First file contains resource-camp data
-# See metadata.txt file in Github repo for detailed information on variables
-url1<- getURL("https://raw.githubusercontent.com/ThomasKraft/Dartmouth-EEES-Modeling-Group/master/Data/serotiny.csv")
-load(textConnection(url1))
-load("/Users/thomaskraft/Desktop/Google Drive/Malaysia/Camp movement analysis/R code/Published code/Data/campmovementdata.RData")
-
+url1 <- "https://github.com/ThomasKraft/HunterGathererMarginalValueTheorem/raw/master/Data/campmovementdata.RData"
+load(curl(url1))
 
 # View the structure of the main data frame
 str(tot)
