@@ -9,6 +9,8 @@
 
 “variable” = The resource set for a given row (which is defined by a given cumulative julian date and camp number). There are five levels of this factor (categorical variable), corresponding to each of the resource sets considered for analysis. Descriptions of the levels are as follows: “tot_rat_only” = rattan; “tot_tuber” = tubers; “tot_meat” = meat; “tot_rat” = all wild foods and rattan; “tot” = all wild foods (no rattan)
   
+“value” = Per capita 
+
 “count” = Within-camp day occupation number. For each camp-resource set combination, this variable is a sequential vector that goes from day 1 (or day zero once the full code has been run) to the last day in camp. Thus, all rows representing foraging returns on the fourth day spent in camp 1 will have a value of 4 for this variable (or 5 once the full code has been run).
 
 “Avg” = Per-capita environmental average foraging returns. Note that each resource set has a single value of “Avg” that is repeated for all rows in which the focal resource set is the same. 
