@@ -8,12 +8,17 @@ library(rootSolve)
 library(plyr)
 library(dplyr)
 library(curl)
+library(AICcmodavg)
 
 url1 <- "https://github.com/ThomasKraft/HunterGathererMarginalValueTheorem/raw/master/Data/campmovementdata.RData"
 load(curl(url1))
 
 # View the structure of the main data frame
 str(tot)
+
+# Remove camp 7. Data from this camp was used in the calculation of environmental averages but cannot be used to construct gain functions because there is uncertainty regarding the dates of occupation.
+tot<-filter(tot, Camp.number != 7)
+tot$Camp.number <- factor(tot$Camp.number) #re-factor to remove extra level
 
 ########### ########### ########### ########### ########### ###########
 #Functions to predict optimal patch residence times according to the marginal value theorem #####
@@ -35,12 +40,12 @@ AE<-function(y,x,Avg){
     body(g) <- D(substitute(AE_a*(1-exp(-AE_b*x)) - Avg*x,list(AE_a = AE_a, AE_b = AE_b, Avg= Avg)), "x")
     try(expected.stay_AE <- uniroot.all(g,c(1,100)), silent=T)
     if(length(expected.stay_AE) == 0)  {
-      return(list(AE_a =coef(AE_mod)[1] , AE_b = coef(AE_mod)[2], AE_AIC = AIC(AE_mod), expected.stay_AE=NA, model=AE_mod))                                             }
+      return(list(AE_a =coef(AE_mod)[1] , AE_b = coef(AE_mod)[2], AE_AIC = AICc(AE_mod), expected.stay_AE=NA, model=AE_mod))                                             }
     else {
       g2<-function(x){}
       body(g2) <- D(D(substitute(AE_a*(1-exp(-AE_b*x))-Avg*x,list(AE_a = AE_a, AE_b = AE_b, Avg = Avg)), "x"),"x")
       expected.stay_AE<-expected.stay_AE[which(g2(expected.stay_AE)<0)]
-      result <-list(AE_a = coef(AE_mod)[1], AE_b = coef(AE_mod)[2], AE_AIC = AIC(AE_mod), expected.stay_AE = expected.stay_AE, model=AE_mod)
+      result <-list(AE_a = coef(AE_mod)[1], AE_b = coef(AE_mod)[2], AE_AIC = AICc(AE_mod), expected.stay_AE = expected.stay_AE, model=AE_mod)
       return(result)
     }
   }
@@ -63,12 +68,12 @@ MM<-function(y,x, Avg){
     
     try(expected.stay_MM <- uniroot.all(g,c(1,100)), silent=T)
     if(length(expected.stay_MM) == 0)  {
-      return(list(MM_a =coef(MM_mod)[1] , MM_c = coef(MM_mod)[2], MM_AIC = AIC(MM_mod), expected.stay_MM=NA, model=MM_mod))                                             }
+      return(list(MM_a =coef(MM_mod)[1] , MM_c = coef(MM_mod)[2], MM_AIC = AICc(MM_mod), expected.stay_MM=NA, model=MM_mod))                                             }
     else{
       g2<-function(x){}
       body(g2) <- D(D(substitute(MM_a*x/(MM_c + x)-Avg*x,list(MM_a = MM_a,MM_c = MM_c)), "x"),"x")
       expected.stay_MM<-expected.stay_MM[which(g2(expected.stay_MM)<0)]
-      result <-list(MM_a = coef(MM_mod)[1], MM_c = coef(MM_mod)[2], MM_AIC = AIC(MM_mod), expected.stay_MM = expected.stay_MM, model=MM_mod)
+      result <-list(MM_a = coef(MM_mod)[1], MM_c = coef(MM_mod)[2], MM_AIC = AICc(MM_mod), expected.stay_MM = expected.stay_MM, model=MM_mod)
       return(result)
     }
     
@@ -91,13 +96,13 @@ H3<-function(y,x,Avg){
     body(g) <- D(substitute(H3_a*x^2/(H3_b^2+x^2)-Avg*x,list(H3_a = H3_a, H3_b = H3_b,Avg=Avg)), "x")
     try(expected.stay_H3 <- uniroot.all(g,c(1,100)), silent=T)
     if(length(expected.stay_H3) == 0)  {
-      return(list(H3_a =coef(H3_mod)[1] , H3_b = coef(H3_mod)[2], H3_AIC = AIC(H3_mod), expected.stay_H3=NA, model=H3_mod))
+      return(list(H3_a =coef(H3_mod)[1] , H3_b = coef(H3_mod)[2], H3_AIC = AICc(H3_mod), expected.stay_H3=NA, model=H3_mod))
     }
     else{
       g2<-function(x){}
       body(g2) <- D(D(substitute(H3_a*x^2/(H3_b^2+x^2)-Avg*x,list(H3_a = H3_a, H3_b = H3_b, Avg=Avg)), "x"),"x")
       expected.stay_H3<-expected.stay_H3[which(g2(expected.stay_H3)<0)]
-      result <-list(H3_a = coef(H3_mod)[1], H3_b = coef(H3_mod)[2], H3_AIC = AIC(H3_mod), expected.stay_H3 = expected.stay_H3, model=H3_mod)
+      result <-list(H3_a = coef(H3_mod)[1], H3_b = coef(H3_mod)[2], H3_AIC = AICc(H3_mod), expected.stay_H3 = expected.stay_H3, model=H3_mod)
       return(result)
     }
   }
@@ -106,7 +111,7 @@ H3<-function(y,x,Avg){
 ######## Linear function #########
 LM<-function(y,x,Avg){
   lm_mod<-lm(y~x-1)
-  result<-list(LM_m=coef(lm_mod)[1],LM_AIC=AIC(lm_mod), model=lm_mod)
+  result<-list(LM_m=coef(lm_mod)[1],LM_AIC=AICc(lm_mod), model=lm_mod)
   return(result)
 }
 
@@ -130,13 +135,13 @@ SIG<-function(y,x,Avg){
     body(g) <- D(substitute((sig_a + (sig_b - sig_a)/(1+exp((sig_c - x)/sig_d)))-Avg*x,list(sig_a=sig_a,sig_b=sig_b,sig_c=sig_c,sig_d=sig_d, Avg=Avg)), "x")
     try(expected.stay_SIG <- uniroot.all(g,c(1,100)), silent=T)
     if(length(expected.stay_SIG) == 0)  {
-      return(list(sig_a =coef(sig_mod)[1] , sig_b = coef(sig_mod)[2], sig_c = coef(sig_mod)[3],sig_d = coef(sig_mod)[4], sig_AIC = AIC(sig_mod), expected.stay_SIG=NA, model=sig_mod))
+      return(list(sig_a =coef(sig_mod)[1] , sig_b = coef(sig_mod)[2], sig_c = coef(sig_mod)[3],sig_d = coef(sig_mod)[4], sig_AIC = AICc(sig_mod), expected.stay_SIG=NA, model=sig_mod))
     }
     else{
       g2<-function(x){}
       body(g2) <- D(D(substitute((sig_a + (sig_b - sig_a)/(1+exp((sig_c - x)/sig_d)))-Avg*x,list(sig_a=sig_a,sig_b=sig_b,sig_c=sig_c,sig_d=sig_d, Avg=Avg)), "x"),"x")
       expected.stay_SIG<-expected.stay_SIG[which(g2(expected.stay_SIG)<0)]
-      result <-list(sig_a = coef(sig_mod)[1], sig_b = coef(sig_mod)[2],sig_c = coef(sig_mod)[3],sig_d = coef(sig_mod)[4], sig_AIC = AIC(sig_mod), expected.stay_SIG = expected.stay_SIG, model=sig_mod)
+      result <-list(sig_a = coef(sig_mod)[1], sig_b = coef(sig_mod)[2],sig_c = coef(sig_mod)[3],sig_d = coef(sig_mod)[4], sig_AIC = AICc(sig_mod), expected.stay_SIG = expected.stay_SIG, model=sig_mod)
       return(result)
     }
   }
@@ -194,6 +199,10 @@ out <- out[-which(is.na(out$SIG) & is.na(out$LM) & is.na(out$H3) & is.na(out$MM)
 # Start by only selecting relevant columns
 out2 <- out %>% select(Camp.number, variable, diffST_SIG,diffST_H3,diffST_MM,diffST_AE,actual, best_mod)
 
+# Camps 1, 4, and 8 must be removed because we can't claim that the actual functional form is informative. Don't run this step if you want to see functional forms for those camps.
+out2 <- filter(out2,!Camp.number %in% c(1,4,8))
+
+
 ## Calculate what proportion of fits are depleting versus non-depleting for different resource sets
 types <- out2 %>%
   group_by(variable, best_mod) %>%
@@ -234,7 +243,6 @@ for(i in 1:length(out$best_mod)){
 final.df <- select(out, Camp.number, variable, actual, best_mod, b)
 final.df <- na.omit(final.df)
 
-
 ############ PLOT FIGURE 2 ########
 ### extract model objects from all of the best fit models for plotting deterministic functions
 modlist <- list()
@@ -262,17 +270,25 @@ preds <- melt(preds)
 #add the predicted values to the camp number, variable, and model attributes
 other <- out[rep(seq_len(nrow(out)), each=length(xvals)),]
 
-det.fits <- cbind(preds, other, count=rep(xvals, 54))
+det.fits <- cbind(preds, other, count=rep(xvals, dim(out)[1]))
+
+#relevel "variable" in tot dataframe to change order
+levels(tot$variable)
+tot$variable <- factor(tot$variable, levels = c("tot_meat", "tot_tuber", "tot_rat_only", "tot", "tot_rat"))
 
 #plot the diminishing returns resources with deterministic functions
-b<- ggplot(tot,aes(x=count,y=value,color=variable))+ geom_point(size=1.5)+facet_wrap(~Camp.number,scale=("free")) + ylab("Energy acquired (kcal)") + xlab("Day in camp") + theme_classic() + theme(legend.justification=c(1,0),legend.position=c(1,0)) + scale_color_discrete(labels=c("Rattan","Tubers","Meat","Wild food total + rattan","Wild food total")) + guides(color=guide_legend(title=NULL))
+b <- ggplot(tot,aes(x=count,y=value,color=variable))+ geom_point(size=1.5) + facet_wrap(~Camp.number,scale=("free")) + ylab("Energy acquired (kcal)") + xlab("Day in camp") + theme_classic() + theme(legend.justification=c(1,0),legend.position=c(1,0)) + scale_color_discrete(labels=c("Meat", "Tubers", "Rattan","Wild food total", "Wild food total + rattan")) + guides(color=guide_legend(title=NULL))
 
 #add the deterministic fits
 b + geom_line(det.fits, mapping=aes(x=count, y=value))
 
-
 ######### PLOT FIGURE 3A #########
-fig3A <- ggplot(final.df, aes(x=b,y=actual))+geom_point(size=4.5, aes(fill=variable), colour="black", pch=21)+theme_classic()+geom_abline(intercept=0,slope=1, linetype=2) +labs(x="Predicted residence time (days)", y="Observed residence time (days)", size=20)+geom_smooth(data=final.df, method = "lm", fullrange=F, colour="black")+scale_y_continuous(limits = c(0, 30))+ theme(legend.position=c(.8,.2), legend.text=element_text(size=20), axis.text=element_text(size=20), axis.title=element_text(size=20), axis.title.y=element_text(vjust=1), axis.title.x=element_text(vjust=-.4))+ scale_fill_discrete(labels=c("Rattan","Tubers","Meat","Wild food total + rattan","Wild food total")) + guides(fill=guide_legend(title=NULL))+ annotate("text", x = 1, y = 30, label = "A", fontface="bold", size=10)
+#relevel "variable" in final.df dataframe to change order
+levels(final.df$variable)
+final.df$variable <- factor(final.df$variable, levels = c("tot_meat", "tot_tuber", "tot_rat_only", "tot", "tot_rat"))
+
+fig3A <- ggplot(final.df, aes(x=b,y=actual))+geom_point(size=4.5, aes(fill=variable), colour="black", pch=21)+theme_classic()+geom_abline(intercept=0,slope=1, linetype=2) +labs(x="Predicted residence time (days)", y="Observed residence time (days)", size=20)+geom_smooth(data=final.df, method = "lm", fullrange=F, colour="black")+scale_y_continuous(limits = c(0, 30))+ theme(legend.position=c(.8,.2), legend.text=element_text(size=20), axis.text=element_text(size=20), axis.title=element_text(size=20), axis.title.y=element_text(vjust=1), axis.title.x=element_text(vjust=-.4))+ scale_fill_discrete(labels=c("Meat", "Tubers", "Rattan","Wild food total", "Wild food total + rattan")) + guides(fill=guide_legend(title=NULL))
+#+ annotate("text", x = 1, y = 30, label = "A", fontface="bold", size=10)
 
 fig3A
 
@@ -293,9 +309,24 @@ mods
 
 
 ########### PLOT FIGURE 3B ############
-fig3B <- ggplot(final.df, aes(x=b-actual, fill=variable)) + geom_histogram(binwidth=3, colour="black")+theme_classic()+labs(x="Predicted - actual residence time (days)", y="Frequency") + scale_fill_discrete(labels=c("Rattan", "Tubers", "Meat", "Wild food total + rattan", "Wild food total")) + theme(legend.position=c(.8,.8), legend.text=element_text(size=20), axis.text=element_text(size=20), axis.title=element_text(size=20), axis.title.y=element_text(vjust=1), axis.title.x=element_text(vjust=-.4))+ guides(fill=guide_legend(title=NULL))
+fig3B <- ggplot(final.df, aes(x=b-actual, fill=variable)) + geom_histogram(binwidth=3, colour="black")+theme_classic()+labs(x="Predicted - actual residence time (days)", y="Frequency") + scale_fill_discrete(labels=c("Meat", "Tubers", "Rattan","Wild food total", "Wild food total + rattan")) + theme(legend.position=c(.8,.8), legend.text=element_text(size=20), axis.text=element_text(size=20), axis.title=element_text(size=20), axis.title.y=element_text(vjust=1), axis.title.x=element_text(vjust=-.4))+ guides(fill=guide_legend(title=NULL))
+#+ annotate("text", x = -14, y = 6, label = "B", fontface="bold", size=10)
 
 fig3B
 
 # Stats for Fig. 3B (one way t-test of predicted minus actual residence times). Note that this is equivalent to doing a paired t-test of the two vectors.
 t.test(final.df$b-final.df$actual)
+
+
+# Random stats included in paper: difference between predicted and actual residence times by resource.
+T2_MVT <- final.df %>%
+  group_by(variable) %>% 
+  summarize(avg.diff = mean(b-actual), SE = sd(b-actual)/sqrt(length(b)))
+
+names(T2_MVT) <- c("Resource Set", "Mean_Difference", "SE")
+T2_MVT <- T2_MVT[with(T2_MVT, order(-Mean_Difference)),]
+T2_MVT[,1] <- c("Total wild food and rattan", "Rattan", "Total wild food", "Meat", "Tubers")
+
+
+library(xtable)
+print(xtable(T2_MVT, include.rownames=F, digits=3), floating=F)
